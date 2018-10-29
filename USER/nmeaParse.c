@@ -455,13 +455,12 @@ static void ParserGPGSV(char SBuf)
 }
 //char dec[] ="326.22"; //326.22
 static void ParserGPVTG(char SBuf) {
-    switch (SBuf)
-    {
+    switch (SBuf){
         case '*':   //语句结束
             NMEA_Start=0;
 			//GPS_VTG_Data.dec = strtof(dec,NULL);
 			if(Parser_CallBack.gpvtgCallback != NULL)
-		    Parser_CallBack.gpvtgCallback(GPS_VTG_Data);
+		        Parser_CallBack.gpvtgCallback(GPS_VTG_Data);
             break;
         case ',':   //该字段结束
             NMEA_MsgBlock++;
@@ -482,24 +481,14 @@ static void ParserGPVTG(char SBuf) {
             break;
     }
 }
-u8 waitCrcFlag = 0;
-u8 crcCnt = 0;
+
 //Geographic Position（GLL）地理定位信息
 static void ParserGPGLL(char SBuf) {
-    if(waitCrcFlag == 1) {
-        crcCnt++;
-        if(crcCnt == 2) {
-            crcCnt = 0;
-            waitCrcFlag = 0;
+    switch (SBuf) {
+        case '*':   //语句结束
             NMEA_Start=0;
             if(Parser_CallBack.gpgllCallback != NULL)
                 Parser_CallBack.gpgllCallback(GPS_GLL_Data);
-        }
-        return;
-    }
-    switch (SBuf) {
-        case '*':   //语句结束
-            waitCrcFlag = 1;
             break;
         case ',':   //该字段结束
             NMEA_MsgBlock++;
@@ -520,14 +509,16 @@ static void ParserGPGLL(char SBuf) {
 u8 NMEA_Parser(char SBuf) {
     u8 i;
 
-    GPS_Parse_Status=0;
     if (NMEA_Start) {  // 解析到以$开始的 NMEA 语句, 进入NMEA 解析流程:
         if (NMEA_TypeParsed) { // NMEA 语句类型解析完毕, 根据类型调用解析函数
             switch (NMEA_MsgType) {
                 case NMEA_GPGGA:
                     ParserGPGGA(SBuf);
-                    if(NMEA_MsgBlock == GPGGA_LATITUDE || NMEA_MsgBlock == GPGGA_LONGTITUDE) {
-                        GPS_Parse_Status = 1;
+                    GPS_Parse_Status &= 0xfc;
+                    if(NMEA_MsgBlock == GPGGA_LATITUDE) {
+                        GPS_Parse_Status = GPS_PARSE_STATUS_LATITUDE;
+                    } else if(NMEA_MsgBlock == GPGGA_LONGTITUDE){
+                        GPS_Parse_Status = GPS_PARSE_STATUS_LONGTITUDE;
                     }
                     break;
                 case NMEA_GPGSA:
@@ -538,8 +529,11 @@ u8 NMEA_Parser(char SBuf) {
                     break;
                 case NMEA_GPRMC:
                     ParserGPRMC(SBuf);
-                    if(NMEA_MsgBlock == GPRMC_LATITUDE || NMEA_MsgBlock == GPRMC_LONGTITUDE) {
-                        GPS_Parse_Status = 1;
+                    GPS_Parse_Status &= 0xfc;
+                    if(NMEA_MsgBlock == GPRMC_LATITUDE) {
+                        GPS_Parse_Status = GPS_PARSE_STATUS_LATITUDE;
+                    } else if(NMEA_MsgBlock == GPRMC_LONGTITUDE) {
+                        GPS_Parse_Status = GPS_PARSE_STATUS_LONGTITUDE;
                     }
                     break;
                 case NMEA_GPVTG:
@@ -547,8 +541,11 @@ u8 NMEA_Parser(char SBuf) {
 				    break;
                 case NMEA_GPGLL:
 				    ParserGPGLL(SBuf);
-                    if(NMEA_MsgBlock == GPGLL_LATITUDE || NMEA_MsgBlock == GPGLL_LONGTITUDE) {
-                        GPS_Parse_Status = 1;
+                    GPS_Parse_Status &= 0xfc;
+                    if(NMEA_MsgBlock == GPGLL_LATITUDE) {
+                        GPS_Parse_Status = GPS_PARSE_STATUS_LATITUDE;
+                    } else if(NMEA_MsgBlock == GPGLL_LONGTITUDE) {
+                        GPS_Parse_Status = GPS_PARSE_STATUS_LONGTITUDE;
                     }
                     break;
                 default:    //无法识别的格式, 复位
@@ -630,6 +627,7 @@ u8 NMEA_Parser(char SBuf) {
                     NMEA_MsgTypeIndex=1;
                     NMEA_MsgBlock=0;
                     NMEA_MsgBlockDatIndex=0;
+                    GPS_Parse_Status |= GPS_PARSE_STATUS_CRC_START;
                     break;
                 case '*':
                     NMEA_Start=0;
@@ -655,6 +653,7 @@ u8 NMEA_Parser(char SBuf) {
     } else { //未解析到$, 循环接收并判断 直到 $
         if (SBuf=='$') {           //接收到$, 下一个字符即为类型判断字符, 先进行相关变量初始化
             NMEA_Start = 1;         //下次调用则进入NMEA 解析流程:
+            GPS_Parse_Status = 0;
             NMEA_MsgTypeIndex = 0;  //从头存放GPS类型字符到变量
             NMEA_TypeParsed = 0;
             NMEA_MsgType = NMEA_NULL;

@@ -18,14 +18,15 @@ char g_Even = 1;
 nmeaPOS lastPos;
 nmeaPOS nowPos;
 double dst;
-
-
+u8 crcFlag = 0;
 struct_gpsDataMQ  gpsDataMQ;
 
 void GPRMC_CallBack(struct_GPSRMC GPS_RMC_Data) {
-
+    crcFlag = 3;
+    //printf("=========GPRMC_CallBack=====\n");
 }
 void GPGGA_CallBack(struct_GPSGGA GPS_GGA_Data) {
+    crcFlag = 3;
 	//printf("Altitude:%.1fmeter\n",atof(GPS_GGA_Data.Altitude));
 }
 void GPGSA_CallBack(struct_GPSGSA GPS_GSA_Data) {
@@ -59,6 +60,7 @@ void GPVTG_CallBack(nmeaGPVTG vtgPack) {
 										 vtgPack.spk,vtgPack.spk_k);
 }
 void GPGLL_CallBack(struct_GPGLL GLLPack) {
+    crcFlag = 3;
     //printf("%d\n",g_Even);
     if(g_Even == 1) {
 		g_Even = 2;
@@ -279,6 +281,8 @@ void initGpsModule() {
 	initUbxCfg(UBX_CFG_NAVX5);
 	//initUbxCfg(UBX_CFG_RATE);
 }
+u8 result;
+
 char ubxStart = 0;
 void gpsTaskMain() {	
 	char bufferSize = 0;	
@@ -301,13 +305,29 @@ void gpsTaskMain() {
                 ubx_Parser(c);
             } else {
                 flag = NMEA_Parser(c);
+                //printf("flag=0x%x,c=%c\n",flag,c);
                 if(c == ',') {
                     Uart1_PutChar(',');
-                } else if(flag == 1) {
-                    Uart1_PutChar(c);
+                } else if((flag&0X03) != 0x00) {
+                    if((flag&0x03) == GPS_PARSE_STATUS_LATITUDE)
+                        Uart1_PutChar('<');
+                    else if((flag&0x03) == GPS_PARSE_STATUS_LONGTITUDE)
+                        Uart1_PutChar('>');
+                } else if(crcFlag > 0){
+                    if(crcFlag == 3)
+                        Uart1_PutChar('*');
+                    else if(crcFlag == 2) {
+                        Uart1_PutChar('a');
+                    } else if(crcFlag == 1) {
+                        Uart1_PutChar('b');
+                    }
+                    crcFlag--;
                 } else {
                     Uart1_PutChar(c);
                 }
+                if((flag&0x30) == GPS_PARSE_STATUS_CRC_START) {
+                    result ^= c;
+                } 
             }
 		}
     }

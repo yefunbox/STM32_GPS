@@ -26,7 +26,62 @@ Project File Date:  10/28/2018
 
 <h2>Output:</h2>
 Build target 'stm32_ucos_gps'
-".\Obj\Project.axf" - 0 Error(s), 0 Warning(s).
+compiling gpsTask.c...
+..\USER\gpsTask.c(34): warning:  #111-D: statement is unreachable
+        printf("=========GPGSA_CallBack=====\n");
+..\USER\gpsTask.c(46): warning:  #111-D: statement is unreachable
+        printf("=========GPGSV_CallBack=====\n");
+..\USER\gpsTask.c(56): warning:  #111-D: statement is unreachable
+      printf("dir=%f,dir_t=%c dec=%3.2f,dec_m=%c spn=%f,spn_n=%c spk=%f,spk_k=%c\n",
+..\USER\gpsTask.c(67): warning:  #223-D: function "ledTurnOn" declared implicitly
+            ledTurnOn(0);
+..\USER\gpsTask.c(70): warning:  #223-D: function "ledTurnOn" declared implicitly
+            ledTurnOn(1);
+..\USER\gpsTask.c(75): warning:  #223-D: function "initParserCallBack" declared implicitly
+      initParserCallBack(GPRMC_CallBack,GPGGA_CallBack,
+..\USER\gpsTask.c(220): warning:  #513-D: a value of type "char *" cannot be assigned to an entity of type "u8 *"
+                p = ubxCfgNav2;
+..\USER\gpsTask.c(223): warning:  #513-D: a value of type "char *" cannot be assigned to an entity of type "u8 *"
+                p = ubxCfgNav5;
+..\USER\gpsTask.c(226): warning:  #513-D: a value of type "char *" cannot be assigned to an entity of type "u8 *"
+                p = ubxCfgNAVX5;
+..\USER\gpsTask.c(229): warning:  #513-D: a value of type "char *" cannot be assigned to an entity of type "u8 *"
+                p = ubxCfgRate;
+..\USER\gpsTask.c(234): warning:  #223-D: function "Uart2_PutChar" declared implicitly
+            Uart2_PutChar(p[i]);
+..\USER\gpsTask.c(242): warning:  #223-D: function "Uart1_PutChar" declared implicitly
+                else               Uart1_PutChar(buffer[i]);
+..\USER\gpsTask.c(278): warning:  #223-D: function "USART2_Configuration" declared implicitly
+        USART2_Configuration();
+..\USER\gpsTask.c(291): warning:  #223-D: function "getQueueSize" declared implicitly
+        bufferSize = getQueueSize();
+..\USER\gpsTask.c(295): warning:  #223-D: function "PopQueue" declared implicitly
+                        c = PopQueue();
+..\USER\gpsTask.c(299): warning:  #223-D: function "Uart1_PutChar" declared implicitly
+                  Uart1_PutChar(c);
+..\USER\gpsTask.c(300): warning:  #223-D: function "ubx_Parser" declared implicitly
+                  if(ubx_Parser(c)==1) 
+..\USER\gpsTask.c(304): warning:  #223-D: function "Uart1_PutChar" declared implicitly
+                  Uart1_PutChar(c);
+..\USER\gpsTask.c(305): warning:  #223-D: function "ubx_Parser" declared implicitly
+                  ubx_Parser(c);
+..\USER\gpsTask.c(307): warning:  #223-D: function "NMEA_Parser" declared implicitly
+                  flag = NMEA_Parser(c);
+..\USER\gpsTask.c(310): warning:  #223-D: function "Uart1_PutChar" declared implicitly
+                      Uart1_PutChar(',');
+..\USER\gpsTask.c(313): warning:  #223-D: function "Uart1_PutChar" declared implicitly
+                          Uart1_PutChar('<');
+..\USER\gpsTask.c(318): warning:  #223-D: function "Uart1_PutChar" declared implicitly
+                          Uart1_PutChar('*');
+..\USER\gpsTask.c(326): warning:  #223-D: function "Uart1_PutChar" declared implicitly
+                      Uart1_PutChar(c);
+..\USER\gpsTask.c(12): warning:  #177-D: function "gpsTask" was declared but never referenced
+  static void gpsTask (void);
+..\USER\gpsTask.c: 25 warnings, 0 errors
+linking...
+Program Size: Code=9236 RO-data=280 RW-data=68 ZI-data=1404  
+FromELF: creating hex file...
+".\Obj\Project.axf" - 0 Error(s), 25 Warning(s).
 
 <h2>Collection of Component include folders:</h2>
   G:\Keil\stm32\github\STM32_GPS\MDK-ARM\RTE

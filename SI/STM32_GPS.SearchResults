@@ -1,9 +1,15 @@
----- speed Matches (8 in 0 files) ----
-nmeaParse.h (user): * VTG packet information structure (Track made good and ground speed)
-nmeaParse.h (user):    double  spn;        /**< Ground speed, knots */
-nmeaParse.h (user):    char    spn_n;      /**< Fixed text 'N' indicates that speed over ground is in knots */
-nmeaParse.h (user):    double  spk;        /**< Ground speed, kilometers per hour */
-nmeaParse.h (user):    char    spk_k;      /**< Fixed text 'K' indicates that speed over ground is in kilometers/hour */
-nmeaParse.h (user):    double  speed;      /**< Speed over the ground in knots */
-nmeaParse.h (user):    GPVTG   = 0x0010,   /**< VTG - Actual track made good and speed over ground. */
-nmeaParse.h (user):    double  speed;      /**< Speed over the ground in kilometers/hour */
+---- GPS_Parse_Status Matches (14 in 0 files) ----
+nmeaParse.c (user):static u8   GPS_Parse_Status = 0;           // 当前解析状态.
+nmeaParse.c (user):            //GPS_Parse_Status=GPS_PARSE_OK;       //接收完毕, 可以处理
+nmeaParse.c (user):                    GPS_Parse_Status &= 0xfc;
+nmeaParse.c (user):                        GPS_Parse_Status = GPS_PARSE_STATUS_LATITUDE;
+nmeaParse.c (user):                        GPS_Parse_Status = GPS_PARSE_STATUS_LONGTITUDE;
+nmeaParse.c (user):                    GPS_Parse_Status &= 0xfc;
+nmeaParse.c (user):                        GPS_Parse_Status = GPS_PARSE_STATUS_LATITUDE;
+nmeaParse.c (user):                        GPS_Parse_Status = GPS_PARSE_STATUS_LONGTITUDE;
+nmeaParse.c (user):                    GPS_Parse_Status &= 0xfc;
+nmeaParse.c (user):                        GPS_Parse_Status = GPS_PARSE_STATUS_LATITUDE;
+nmeaParse.c (user):                        GPS_Parse_Status = GPS_PARSE_STATUS_LONGTITUDE;
+nmeaParse.c (user):                    GPS_Parse_Status |= GPS_PARSE_STATUS_CRC_START;
+nmeaParse.c (user):            GPS_Parse_Status = 0;
+nmeaParse.c (user):    return GPS_Parse_Status;

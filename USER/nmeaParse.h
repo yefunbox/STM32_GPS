@@ -321,5 +321,9 @@ enum NMEA_MSG_BLOCK
     GPGLL_LATITUDE   = 0x00,
     GPGLL_LONGTITUDE = 0X02,
 };
+#define     GPS_PARSE_STATUS_LATITUDE      0x01  //解析到LATITUDE
+#define     GPS_PARSE_STATUS_LONGTITUDE    0x02  //解析到LONGTITUDE
+#define     GPS_PARSE_STATUS_CRC_START     0x10  //解析到CRC 校验开始地方
+#define     GPS_PARSE_STATUS_CRC_END       0x20  //解析到CRC 校验结束地方
 
 #endif
