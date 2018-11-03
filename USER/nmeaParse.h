@@ -3,6 +3,7 @@
 
 typedef unsigned char u8;
 typedef unsigned short u16;
+typedef unsigned int u32;
 
 typedef struct
 {
@@ -34,7 +35,7 @@ typedef struct
 //  char EW;		    // E/W
     char PositionFix;	// 0,1,2,6 [ASCII]
     u8 SatUsed;	        // 00~12
-//  u8 HDOP[4];		    // 0.5~99.9
+    char HDOP[4];		    // 0.5~99.9
     char Altitude[8];	// -9999.9~99999.9 [ASCII]
 }struct_GPSGGA;
 
@@ -254,18 +255,18 @@ enum nmeaPACKTYPE
     GPGSV   = 0x0004,   /**< GSV - Number of SVs in view, PRN numbers, elevation, azimuth & SNR values. */
     GPRMC   = 0x0008,   /**< RMC - Recommended Minimum Specific GPS/TRANSIT Data. */
     GPVTG   = 0x0010,   /**< VTG - Actual track made good and speed over ground. */
-	GPGLL   = 0x2000,   //Geographic Position（GLL）定位地理信息
+	GPGLL   = 0x2000,   //Geographic Position\A3\A8GLL\A3\A9\B6\A8位\B5\D8\C0\ED\D0\C5息
 
-    GPTXT   = 0x0020,   /**< TXT - 产品信息、天线状态、闰秒等 */
+    GPTXT   = 0x0020,   /**< TXT - \B2\FA品\D0\C5息\A1\A2\CC\EC\CF\DF状态\A1\A2\C8\F2\C3\EB\B5\C8 */
 
-    BDGSV   = 0x0040,   /**< GSV - 可见卫星 */
-    BDGSA   = 0x0080,   /**< GGA - 精度因子和有效卫星 */
+    BDGSV   = 0x0040,   /**< GSV - \BF杉\FB\CE\C0\D0\C7 */
+    BDGSA   = 0x0080,   /**< GGA - \BE\AB\B6\C8\D2\F2\D7雍\CD\D3\D0效\CE\C0\D0\C7 */
 
-    GNZDA   = 0x0100,   /**< ZDA - 时间和日期 */
-    GNGLL   = 0x0200,   /**< GLL - 地理位置 经纬度 */
-    GNVTG   = 0x0400,    /**< VTG - 对地速度和航向 */
-    GNRMC   = 0x0800,   /**< RMC - 推荐的最少专用航向数据 */
-    GNGGA   = 0x1000,   /**< GGA - 接收机定位数据，详细*/
+    GNZDA   = 0x0100,   /**< ZDA - 时\BC\E4\BA\CD\C8\D5\C6\DA */
+    GNGLL   = 0x0200,   /**< GLL - \B5\D8\C0\ED位\D6\C3 \BE\AD纬\B6\C8 */
+    GNVTG   = 0x0400,    /**< VTG - \B6缘\D8\CB俣群秃\BD\CF\F2 */
+    GNRMC   = 0x0800,   /**< RMC - \CD萍\F6\B5\C4\D7\EE\C9\D9专\D3煤\BD\CF\F2\CA\FD\BE\DD */
+    GNGGA   = 0x1000,   /**< GGA - \BD\D3\CA栈\FA\B6\A8位\CA\FD\BE荩\AC\CF\EA细*/
 };
 
 /**
@@ -297,17 +298,29 @@ typedef struct _nmeaINFO
     double  lat;        /**< Latitude in NDEG - +/-[degree][min].[sec/60] */
     double  lon;        /**< Longitude in NDEG - +/-[degree][min].[sec/60] */
     double  elv;        /**< Antenna altitude above/below mean sea level (geoid) in meters */
-    double  sog;        /**< 数值 对地速度，单位为节 */
+    double  sog;        /**< \CA\FD值 \B6缘\D8\CB俣龋\AC\B5\A5位为\BD\DA */
     double  speed;      /**< Speed over the ground in kilometers/hour */
     double  direction;  /**< Track angle in degrees True */
     double  declination; /**< Magnetic variation degrees (Easterly var. subtracts from true course) */
-    char    mode;       /**< 字符 定位模式标志 (A = 自主模式, D = 差分模式, E = 估算模式, N = 数据无效) */
+    char    mode;       /**< \D7址\FB \B6\A8位模式\B1\EA志 (A = \D7\D4\D6\F7模式, D = \B2\EE\B7\D6模式, E = \B9\C0\CB\E3模式, N = \CA\FD\BE\DD\CE\DE效) */
     nmeaSATINFO satinfo; /**< Satellites information */
-    nmeaSATINFO BDsatinfo; /**北斗卫星信息*/
+    nmeaSATINFO BDsatinfo; /**\B1\B1\B6\B7\CE\C0\D0\C7\D0\C5息*/
 		
 	int txt_level;
 	char *txt;
 } nmeaINFO;
+
+typedef struct {                                           
+    char latitude[15];             //纬度 ddmm.mmmmm:  2239.76703
+    char longitude[16];            //经度 dddmm.mmmmm:11401.32688
+    u8 gpssta;                  //GPS状态:0,未定位;1,非差分定位;2,差分定位;6,正在估算.                  
+    u8 fixmode;                 //定位类型:1,没有定位;2,2D定位;3,3D定位
+    int altitude;               //海拔高度,放大了10倍,实际除以10.单位:0.1m     
+    u16 speed;                  //地面速率,放大了1000倍,实际除以10.单位:0.001公里/小时  
+    double dir;                /**< True track made good (degrees) */
+    u8 hdop;                  //HDOP水平精度因子 0.5~99.9
+}NMEA_BASE_MSG; 
+
 enum NMEA_MSG_BLOCK
 {
     GPRMC_UTC        = 0x00,
@@ -320,10 +333,23 @@ enum NMEA_MSG_BLOCK
 
     GPGLL_LATITUDE   = 0x00,
     GPGLL_LONGTITUDE = 0X02,
+
+    
+    GPVTG_DIR        = 0x00,
+    GPVTG_DIR_T      = 0x01,  //Fixed text 'T' indicates that track made good is relative to true north
+    GPVTG_DEC        = 0x02,  //Magnetic track made good
+    GPVTG_DEC_M      = 0x03,  //Fixed text 'M'
+    GPVTG_SPN        = 0x04,  //Ground speed, knots
+    GPVTG_SPN_N      = 0x05,  //Fixed text 'N' indicates that speed over ground is in knots
+    GPVTG_SPK        = 0x06,  //Ground speed, kilometers per hour
+    GPVTG_SPK_K      = 0x07,  //Fixed text 'K' indicates that speed over ground is in kilometers/hour
 };
-#define     GPS_PARSE_STATUS_LATITUDE      0x01  //解析到LATITUDE
-#define     GPS_PARSE_STATUS_LONGTITUDE    0x02  //解析到LONGTITUDE
-#define     GPS_PARSE_STATUS_CRC_START     0x10  //解析到CRC 校验开始地方
-#define     GPS_PARSE_STATUS_CRC_END       0x20  //解析到CRC 校验结束地方
+#define     GPS_PARSE_STATUS_LATITUDE      0x01  //\BD\E2\CE\F6\B5\BDLATITUDE
+#define     GPS_PARSE_STATUS_LONGTITUDE    0x02  //\BD\E2\CE\F6\B5\BDLONGTITUDE
+#define     GPS_PARSE_STATUS_CRC_START     0x10  //\BD\E2\CE\F6\B5\BDCRC 校\D1榭糪B5胤\BD
+#define     GPS_PARSE_STATUS_CRC_END       0x20  //\BD\E2\CE\F6\B5\BDCRC 校\D1\E9\BD\E1\CA\F8\B5胤\BD
+#define     GPS_PARSE_STATUS_CRC_CRC1      0x40
+#define     GPS_PARSE_STATUS_CRC_CRC2      0x80
+//#define     GPS_PARSE_STATUS_CRC_DOING     0x40  //\BD\E2\CE\F6\B5\BDCRC 校\D1\E9\BD\E1\CA\F8\B5胤\BD
 
 #endif

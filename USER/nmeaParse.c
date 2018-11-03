@@ -12,6 +12,7 @@ static u8   NMEA_MsgBlockDatIndex = 0;      // NMEA 数据每个字段内字符索引 从0开
 
 static u8   GPS_Parse_Status = 0;           // 当前解析状态.
 static u8   SateInfoIndex = 0;              //
+static u8   CRC_CNT = 0;
 
 static struct_GPSRMC GPS_RMC_Data;
 static struct_GPSGGA GPS_GGA_Data;
@@ -19,13 +20,14 @@ static struct_GPSGSA GPS_GSA_Data;
 static struct_GPSGSV GPS_GSV_Data;
 static nmeaGPVTG     GPS_VTG_Data;
 static struct_GPGLL  GPS_GLL_Data;
+NMEA_BASE_MSG nmea_base_msg;
 
 static struct_parser_callback Parser_CallBack;
 
 static void ParserGPGGA(char SBuf) {
     switch (SBuf) {
         case '*':   //语句结束
-            NMEA_Start=0;
+            //NMEA_Start=0;
 			if(Parser_CallBack.gpggaCallback != NULL)
 		        Parser_CallBack.gpggaCallback(GPS_GGA_Data);
             break;
@@ -61,24 +63,22 @@ static void ParserGPGGA(char SBuf) {
                                      break;
                           }
                           break;
-                     /*
-                                    case 7:             //<8> HDOP水平精度因子 0.5~99.9
-                                            GPS_GGA_Data.HDOP[GPS_GGA_Data.BlockIndex]=SBuf;
-                                            break;
-                                   */
+                     case 7:         //<8> HDOP水平精度因子 0.5~99.9
+                          GPS_GGA_Data.HDOP[NMEA_MsgBlockDatIndex]=SBuf;
+                          break;
                      case 8:         //<9> 海拔高度 -9999.9~99999.9
                            GPS_GGA_Data.Altitude[NMEA_MsgBlockDatIndex]=SBuf;
                            break;
                   }
-        NMEA_MsgBlockDatIndex++;     //字段字符索引++, 指向下一个字符
+                  NMEA_MsgBlockDatIndex++;     //字段字符索引++, 指向下一个字符
+                  break;
     }
 }
 //$GPRMC,<1>,<2>,<3>,<4>,<5>,<6>,<7>,<8>,<9>,<10>,<11>,<12>*hh
 static int ParserGPRMC(char SBuf) {
     switch (SBuf) {
         case '*':
-            NMEA_Start=0;
-            //GPS_Parse_Status=GPS_PARSE_OK;       //接收完毕, 可以处理
+            //NMEA_Start=0;
             if(Parser_CallBack.gprmcCallback != NULL)
                 Parser_CallBack.gprmcCallback(GPS_RMC_Data);
             break;
@@ -116,6 +116,7 @@ static int ParserGPRMC(char SBuf) {
                     break;
                 case GPRMC_LATITUDE:         // <3> 纬度 ddmm.mmmm
                     //GPS_RMC_Data.Latitude[NMEA_MsgBlockDatIndex]=SBuf;    //DEBUG
+                    //nmea_base_msg.latitude[NMEA_MsgBlockDatIndex] = SBuf;
                     switch (NMEA_MsgBlockDatIndex) {           // 前导0也会输出, 分别转换成数值型
                         case 0:     // dd
                             GPS_RMC_Data.LatitudeD=(SBuf-'0')*10;
@@ -150,6 +151,7 @@ static int ParserGPRMC(char SBuf) {
                     break;
                 case GPRMC_LONGTITUDE:         //<5> 经度 dddmm.mmmm
                     //GPS_RMC_Data.Longitude[NMEA_MsgBlockDatIndex]=SBuf;   //DEBUG
+                    //nmea_base_msg.longitude[NMEA_MsgBlockDatIndex] = SBuf;
                     switch (NMEA_MsgBlockDatIndex) {           // 前导0也会输出, 分别转换成数值型
                         case 0:     // ddd
                             GPS_RMC_Data.LongitudeD=(SBuf-'0')*100;
@@ -299,7 +301,7 @@ static void ParserGPGSA(char SBuf)
     switch (SBuf)
     {
     case '*':               // 语句数据结束, 紧跟2位校验值
-        NMEA_Start=0;
+        //NMEA_Start=0;
 		if(Parser_CallBack.gpgsaCallback != NULL)
 		Parser_CallBack.gpgsaCallback(GPS_GSA_Data);
         break;
@@ -358,7 +360,7 @@ static void ParserGPGSV(char SBuf)
     switch (SBuf)
     {
     case '*':               // 语句数据结束, 紧跟2位校验值
-        NMEA_Start=0;
+        //NMEA_Start=0;
 		SateInfoIndex=0;
 		if(Parser_CallBack.gpgsvCallback != NULL)
 		Parser_CallBack.gpgsvCallback(GPS_GSV_Data);
@@ -453,14 +455,48 @@ static void ParserGPGSV(char SBuf)
         NMEA_MsgBlockDatIndex++;  // 该字段字符序号 +1
     }
 }
+//str转换为数字
+//buf:数字存储区
+//返回值:转换后的数值
+double Str2Num(u8 *buf)
+{
+    u8 *p=buf;
+    double ires=0,fres=0;
+    u8 ilen=0,flen=0,i;
+    u8 mask=0;
+    double res;
+    i = strlen(buf);
+    
+    //printf("i=%d ",i);
+    for(;i > 0;i--) {
+        if(*p=='-'){mask|=0X02;p++;}//是负数
+        if(*p=='.'){mask|=0X01;p++;}//遇到小数点了  
+        if(mask&0X01)flen++;
+        else ilen++;
+        p++;
+    }
+    if(mask&0X02)buf++; //去掉负号
+    for(i=0;i<ilen;i++) { //得到整数部分数据
+        ires+=NMEA_Pow(10,ilen-1-i)*(buf[i]-'0');
+    }
+    if(flen>5)flen=5;   //最多取5位小数
+    for(i=0;i<flen;i++) { //得到小数部分数据
+        fres+=(double)(buf[ilen+1+i]-'0')/NMEA_Pow(10,1+i);
+    } 
+    res = ires + fres;
+    if(mask&0X02)res=-res;
+    //printf("s2n=%s,%d,%d,%.3f\n",buf,ilen,flen,res);
+    return res;
+}
 //char dec[] ="326.22"; //326.22
+char speedStr[10];
 static void ParserGPVTG(char SBuf) {
     switch (SBuf){
         case '*':   //语句结束
-            NMEA_Start=0;
-			//GPS_VTG_Data.dec = strtof(dec,NULL);
-			if(Parser_CallBack.gpvtgCallback != NULL)
-		        Parser_CallBack.gpvtgCallback(GPS_VTG_Data);
+            //NMEA_Start=0;
+            //GPS_VTG_Data.dec = strtof(dec,NULL);
+            if(Parser_CallBack.gpvtgCallback != NULL)
+                Parser_CallBack.gpvtgCallback(GPS_VTG_Data);
             break;
         case ',':   //该字段结束
             NMEA_MsgBlock++;
@@ -468,16 +504,18 @@ static void ParserGPVTG(char SBuf) {
             break;
         default:    //字段字符
             switch (NMEA_MsgBlock) { // 判断当前处于哪个字段
-                case 0:              // <1> 运动角度，000 - 359，（前导位数不足则补0）
-                     switch (NMEA_MsgBlockDatIndex) {
-				        case 0:
-					          break;
-				        case 1:
-							  break;
-			        }
+                case GPVTG_DEC:      // <1> 运动角度，000 - 359，（前导位数不足则补0）
+                    GPS_VTG_Data.dec = 20;
 				    break;
+                case GPVTG_SPK:
+                    speedStr[NMEA_MsgBlockDatIndex] = SBuf;
+                    break;
+                case GPVTG_SPK_K:
+                    GPS_VTG_Data.spk = Str2Num(speedStr);
+                    //printf("spk=%.3f\n",GPS_VTG_Data.spk);
+                    break;
             }
-		    NMEA_MsgBlockDatIndex++;	 //字段字符索引++, 指向下一个字符
+            NMEA_MsgBlockDatIndex++;	 //字段字符索引++, 指向下一个字符
             break;
     }
 }
@@ -486,7 +524,7 @@ static void ParserGPVTG(char SBuf) {
 static void ParserGPGLL(char SBuf) {
     switch (SBuf) {
         case '*':   //语句结束
-            NMEA_Start=0;
+            //NMEA_Start=0;
             if(Parser_CallBack.gpgllCallback != NULL)
                 Parser_CallBack.gpgllCallback(GPS_GLL_Data);
             break;
@@ -497,11 +535,11 @@ static void ParserGPGLL(char SBuf) {
         default:    //字段字符
             switch (NMEA_MsgBlock) { // 判断当前处于哪个字段
                 case GPGLL_LATITUDE:  //纬度ddmm.mmmm，度分格式（前导位数不足则补0）
-				    break;
+                    break;
                 case GPGLL_LONGTITUDE:
                     break;
             }
-		    NMEA_MsgBlockDatIndex++;	 //字段字符索引++, 指向下一个字符
+            NMEA_MsgBlockDatIndex++;	 //字段字符索引++, 指向下一个字符
             break;
     }
 }
@@ -509,16 +547,17 @@ static void ParserGPGLL(char SBuf) {
 u8 NMEA_Parser(char SBuf) {
     u8 i;
 
+    //printf("s=%d,n=%d\n",NMEA_Start,NMEA_TypeParsed);
     if (NMEA_Start) {  // 解析到以$开始的 NMEA 语句, 进入NMEA 解析流程:
-        if (NMEA_TypeParsed) { // NMEA 语句类型解析完毕, 根据类型调用解析函数
+        if (NMEA_TypeParsed == 1) { // NMEA 语句类型解析完毕, 根据类型调用解析函数
             switch (NMEA_MsgType) {
                 case NMEA_GPGGA:
                     ParserGPGGA(SBuf);
-                    GPS_Parse_Status &= 0xfc;
+                    GPS_Parse_Status &= 0xf0;
                     if(NMEA_MsgBlock == GPGGA_LATITUDE) {
-                        GPS_Parse_Status = GPS_PARSE_STATUS_LATITUDE;
+                        GPS_Parse_Status |= GPS_PARSE_STATUS_LATITUDE;
                     } else if(NMEA_MsgBlock == GPGGA_LONGTITUDE){
-                        GPS_Parse_Status = GPS_PARSE_STATUS_LONGTITUDE;
+                        GPS_Parse_Status |= GPS_PARSE_STATUS_LONGTITUDE;
                     }
                     break;
                 case NMEA_GPGSA:
@@ -529,23 +568,23 @@ u8 NMEA_Parser(char SBuf) {
                     break;
                 case NMEA_GPRMC:
                     ParserGPRMC(SBuf);
-                    GPS_Parse_Status &= 0xfc;
+                    GPS_Parse_Status &= 0xf0;
                     if(NMEA_MsgBlock == GPRMC_LATITUDE) {
-                        GPS_Parse_Status = GPS_PARSE_STATUS_LATITUDE;
+                        GPS_Parse_Status |= GPS_PARSE_STATUS_LATITUDE;
                     } else if(NMEA_MsgBlock == GPRMC_LONGTITUDE) {
-                        GPS_Parse_Status = GPS_PARSE_STATUS_LONGTITUDE;
+                        GPS_Parse_Status |= GPS_PARSE_STATUS_LONGTITUDE;
                     }
                     break;
                 case NMEA_GPVTG:
-				    ParserGPVTG(SBuf);
-				    break;
+                    ParserGPVTG(SBuf);
+                    break;
                 case NMEA_GPGLL:
-				    ParserGPGLL(SBuf);
-                    GPS_Parse_Status &= 0xfc;
+                    ParserGPGLL(SBuf);
+                    GPS_Parse_Status &= 0xf0;
                     if(NMEA_MsgBlock == GPGLL_LATITUDE) {
-                        GPS_Parse_Status = GPS_PARSE_STATUS_LATITUDE;
+                        GPS_Parse_Status |= GPS_PARSE_STATUS_LATITUDE;
                     } else if(NMEA_MsgBlock == GPGLL_LONGTITUDE) {
-                        GPS_Parse_Status = GPS_PARSE_STATUS_LONGTITUDE;
+                        GPS_Parse_Status |= GPS_PARSE_STATUS_LONGTITUDE;
                     }
                     break;
                 default:    //无法识别的格式, 复位
@@ -555,6 +594,21 @@ u8 NMEA_Parser(char SBuf) {
                     NMEA_MsgTypeIndex=1;
                     break;
             }
+            if(SBuf == '*') {
+                NMEA_TypeParsed = 2;
+                GPS_Parse_Status = GPS_Parse_Status & 0x0f | GPS_PARSE_STATUS_CRC_END;
+            }
+        } else if(NMEA_TypeParsed == 2) {   //CRC1 CRC2
+            CRC_CNT++;
+            if(CRC_CNT == 1) {
+                GPS_Parse_Status = GPS_PARSE_STATUS_CRC_CRC1;
+            } else if(CRC_CNT == 2) {
+                GPS_Parse_Status = GPS_PARSE_STATUS_CRC_CRC2;
+                CRC_CNT = 0;
+                NMEA_TypeParsed = 3;
+                NMEA_Start = 0;
+            }
+
         } else {  // NMEA 语句类型未解析, 根据类型调用解析函数
             switch (SBuf) {
                 case ',': // NMEA 语句类型字段结束,开始判断
@@ -598,10 +652,11 @@ u8 NMEA_Parser(char SBuf) {
                     }
                     if(NMEA_MsgTypeBuff[3] == 'T' && NMEA_MsgTypeBuff[4] == 'G') {
                         NMEA_MsgType = NMEA_GPVTG;
-				    }
+                    }
                     if(NMEA_MsgTypeBuff[3] == 'L' && NMEA_MsgTypeBuff[4] == 'L') {
                         NMEA_MsgType = NMEA_GPGLL;
-				    }
+                        GPS_Parse_Status |= GPS_PARSE_STATUS_LATITUDE;
+                    }
                     // GPS 输出顺序 - 5
                     if (NMEA_MsgTypeBuff[4]=='C'){
                         //GPS_RMC_Data.Status='-';
@@ -627,7 +682,6 @@ u8 NMEA_Parser(char SBuf) {
                     NMEA_MsgTypeIndex=1;
                     NMEA_MsgBlock=0;
                     NMEA_MsgBlockDatIndex=0;
-                    GPS_Parse_Status |= GPS_PARSE_STATUS_CRC_START;
                     break;
                 case '*':
                     NMEA_Start=0;
@@ -642,6 +696,7 @@ u8 NMEA_Parser(char SBuf) {
                     //导致判断失效,
                     break;
                 default:  //处于第一个字段中, 继续接收
+                    GPS_Parse_Status = GPS_PARSE_STATUS_CRC_START;
                     NMEA_MsgTypeBuff[NMEA_MsgTypeIndex]=SBuf;
                     NMEA_MsgTypeIndex++;
                     if (NMEA_MsgTypeIndex>5) NMEA_Start=0;
@@ -653,13 +708,13 @@ u8 NMEA_Parser(char SBuf) {
     } else { //未解析到$, 循环接收并判断 直到 $
         if (SBuf=='$') {           //接收到$, 下一个字符即为类型判断字符, 先进行相关变量初始化
             NMEA_Start = 1;         //下次调用则进入NMEA 解析流程:
-            GPS_Parse_Status = 0;
             NMEA_MsgTypeIndex = 0;  //从头存放GPS类型字符到变量
             NMEA_TypeParsed = 0;
             NMEA_MsgType = NMEA_NULL;
             NMEA_MsgBlock = 0;
             NMEA_MsgBlockDatIndex = 0;
         }
+        GPS_Parse_Status = 0;
     }
 
     return GPS_Parse_Status;
@@ -678,19 +733,6 @@ void initParserCallBack(GPRMC_CALLBACK gprmcCallback,GPGGA_CALLBACK gpggaCallbac
 /*   Header             ID          Length      Payload    Checksum
  *  0xB5 0x62    0x01 0x02       28                         CK_A CK_B
 */
-int ParserUbxNavPOSLLH(const char *buff, int buff_sz) {
-   int hAcc = 0;  //unit mm
-   /*
-     u8 buf[36] = {
-         0xB5,0x62,0x01,0x02,0x1C,0x00,0xB8,0x14,0x60,0x0F,0x35,0x44,0xE7,0x43,0x76,0x5E,
-         0x80,0x0D,0xF1,0xE8,0x00,0x00,0x3C,0xF4,0x00,0x00,0x91,0x73,0x00,0x00,0xF1,0xE6,
-         0x03,0x00,0x45,0xB2};
-     */
-   hAcc = buff[26]|buff[27]<<8|buff[28]<<16|buff[29]<<24;
-   
-   //printf("hAcc = %.1f\n",(double)hAcc/1000);
-   return hAcc;
-}
 #define HEADER_B5   0XB5
 #define HEADER_62   0X62
 enum UBX_TYPE
@@ -712,20 +754,19 @@ static u8 ubxID = 0;
 static u8 ubxLength = 0;
 static u8 ubxPayLoadIndex = 0;
 int mhAcc = 0;
-
 u8 ubx_Parser(char SBuf) {    
     
     switch(SBuf) {
         case HEADER_B5:
-            ubxType = HEADER_62;
-            break;
+            if(ubxType == UBX_TYPE_UNKOWN) {
+                ubxType = HEADER_62;
+                break;
+            }
         case HEADER_62:
             if(ubxType == HEADER_62) {
                 ubxType = UBX_TYPE_CLASS;
-            } else {
-                ubxType = UBX_TYPE_UNKOWN;
+                break;
             }
-            break;
         default:
             switch(ubxType) {
                 case UBX_TYPE_CLASS:

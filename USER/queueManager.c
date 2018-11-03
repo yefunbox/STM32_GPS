@@ -4,8 +4,8 @@
 
 typedef struct Queues{
     char data[MAX];
-    int head;
-    int tail;
+    char head;
+    char tail;
 }Queue;
 
 Queue queue;
@@ -14,10 +14,10 @@ void initQueue(){
     queue.head = queue.tail = 0;
 }
 char getQueueSize() {
-    if(queue.head > queue.tail) {
-        return (queue.head - queue.tail);
+    if(queue.tail >= queue.head) {
+        return (queue.tail- queue.head);
 	} else {
-        return (queue.tail - queue.head);
+        return (queue.tail + MAX - queue.head);
 	}
 }
 void PushQueue(char value){
@@ -27,17 +27,19 @@ void PushQueue(char value){
     } else {
         //队列已满
         //printf("PushQueue Is Full\n");
-        //printf(".");
+        printf("#");
     }
 }
 char PopQueue( ){
+    char value = 0;
     if(queue.head != queue.tail) {
-        int value = queue.data[queue.head];
+        value = queue.data[queue.head];
         queue.head = (queue.head+1)%MAX;
         return value;
     } else {
         //队列为空
         //printf("PopQueue Is Empty\n");
+        printf("!");
     }
     return -1;
 }
